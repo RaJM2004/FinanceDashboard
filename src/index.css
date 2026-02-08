@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#020617] text-slate-100 font-sans antialiased overflow-x-hidden;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-700 rounded-full hover:bg-slate-600 transition-colors;
+}
+
+/* Utility to hide scrollbar but keep functionality */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-slate-900/50 backdrop-blur-xl border border-slate-700/50 shadow-xl;
+  }
+
+  .glass-card {
+    @apply bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 transition-all duration-300;
+  }
+
+  .neon-text-blue {
+    text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+  }
+
+  .neon-text-purple {
+    text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+  }
+
+  .neon-border-blue {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.2), inset 0 0 10px rgba(59, 130, 246, 0.1);
+  }
+}
+
+/* AI Network Animation Background (Simple Version) */
+.bg-ai-network {
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+}
+
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  aside,
+  header,
+  button,
+  .canvas-bg,
+  .fixed,
+  .hidden-print {
+    display: none !important;
+  }
+
+  body,
+  main {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Typography for print */
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  span,
+  div,
+  td {
+    color: black !important;
+    -webkit-text-fill-color: black !important;
+    /* Override gradient text */
+    text-shadow: none !important;
+  }
+
+  /* Card optimization */
+  .glass-card,
+  .glass-panel,
+  div[class*="bg-slate-900"] {
+    background: transparent !important;
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+}
