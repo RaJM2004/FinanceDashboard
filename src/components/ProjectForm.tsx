@@ -26,10 +26,16 @@ const ProjectForm = ({ onSuccess, onCancel, initialData }: ProjectFormProps) => 
         e.preventDefault();
         setLoading(true);
         try {
+            // Prepare payload: convert empty strings to null for optional dates
+            const payload = {
+                ...formData,
+                end_date: formData.end_date === '' ? null : formData.end_date,
+            };
+
             if (initialData?.id) {
-                await api.updateProject(initialData.id, formData);
+                await api.updateProject(initialData.id, payload as any);
             } else {
-                await api.createProject(formData);
+                await api.createProject(payload as any);
             }
             onSuccess();
         } catch (error) {

@@ -42,6 +42,10 @@ const Team = () => {
     }, {});
     const chartData = Object.values(hoursByEmployee);
 
+    // Find current employee details
+    const { employeeId } = useAuth(); // getting employeeId from useAuth
+    const currentEmployee = employees.find(e => e.id === employeeId);
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -131,7 +135,7 @@ const Team = () => {
                     {(role === 'employee' || role === 'admin') && (
                         <div className="bg-slate-900/40 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-slate-700/50">
                             <h3 className="font-bold text-slate-100 mb-4">Log Activity</h3>
-                            <WorkLogForm onSuccess={fetchData} />
+                            <WorkLogForm onSuccess={fetchData} currentEmployee={currentEmployee} />
                         </div>
                     )}
 

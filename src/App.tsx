@@ -6,6 +6,7 @@ import Finance from './pages/Finance';
 import Projects from './pages/Projects';
 import Team from './pages/Team';
 import Login from './pages/Login';
+import SetupTeam from './pages/SetupTeam';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/setup" element={<SetupTeam />} />
 
           <Route path="/" element={
             <DashboardLayout>

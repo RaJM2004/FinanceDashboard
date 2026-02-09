@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
-import type { Project, WorkLog } from '../types';
+import type { Project, WorkLog, Employee } from '../types';
 import { Clock, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
+// Project Assignments Mapping
+const PROJECT_ASSIGNMENTS: Record<string, string[]> = {
+    'raj@anvriksh.com': ['Website Redesign', 'Mobile App Dev', 'AI Integration', 'E-commerce Platform'], // Admin - Access to all
+    'ammar@anvriksh.com': ['Mobile App Dev'],
+    'raksha@anvriksh.com': ['Website Redesign'],
+    'vaibhav@anvriksh.com': ['AI Integration'],
+    'naresh@anvriksh.com': ['E-commerce Platform'],
+};
+
 interface WorkLogFormProps {
     onSuccess: () => void;
+    currentEmployee?: Employee;
 }
 
-const WorkLogForm = ({ onSuccess }: WorkLogFormProps) => {
+const WorkLogForm = ({ onSuccess, currentEmployee }: WorkLogFormProps) => {
     const { employeeId } = useAuth();
     const [projects, setProjects] = useState<Project[]>([]);
     const [formData, setFormData] = useState<Omit<WorkLog, 'id' | 'created_at'>>({
@@ -31,14 +41,34 @@ const WorkLogForm = ({ onSuccess }: WorkLogFormProps) => {
         const fetchProjects = async () => {
             try {
                 const data = await api.getProjects();
-                // Filter mainly ongoing projects, or all
-                setProjects(data.filter(p => p.status === 'ongoing'));
+
+                let filteredProjects = data;
+
+                // Explicitly check for admin role or email
+                if (currentEmployee?.role === 'admin' || currentEmployee?.email === 'raj@anvriksh.com') {
+                    // Admin sees all projects
+                    filteredProjects = data;
+                } else if (currentEmployee && PROJECT_ASSIGNMENTS[currentEmployee.email]) {
+                    const assignedNames = PROJECT_ASSIGNMENTS[currentEmployee.email];
+                    filteredProjects = data.filter(p => assignedNames.includes(p.project_name));
+                } else {
+                    // Default behavior
+                    filteredProjects = data.filter(p => p.status === 'ongoing');
+                }
+
+                // Fallback debug: if filter results in 0 but data exists, check generic ongoing
+                if (filteredProjects.length === 0 && data.length > 0) {
+                    console.warn('Filter returned 0 projects. Admin logic might be skipped or assignment mismatch. Showing ongoing.');
+                    filteredProjects = data.filter(p => p.status === 'ongoing');
+                }
+
+                setProjects(filteredProjects);
             } catch (error) {
                 console.error(error);
             }
         };
         fetchProjects();
-    }, []);
+    }, [currentEmployee]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -49,9 +79,31 @@ const WorkLogForm = ({ onSuccess }: WorkLogFormProps) => {
 
         setLoading(true);
         try {
-            await api.addWorkLog(formData);
-            // Reset form (except date/employee)
+            let dataToSubmit = { ...formData };
+
+            // Handle Custom Project
+            if (dataToSubmit.project_id === 'custom') {
+                const customName = (window as any).customProjectName;
+                if (!customName || customName.trim() === '') {
+                    alert('Please enter a custom project name.');
+                    setLoading(false);
+                    return;
+                }
+                // Prepend to Task
+                dataToSubmit.task = `[Project: ${customName}] ${dataToSubmit.task}`;
+                // Set project_id to null (allowed by schema)
+                // However, the `Project` type in `types/index.ts` might expect string?
+                // `project_id` in types is `project_id?: string`.
+                // Actually supabase will accept null if column is nullable.
+                // But TypeScript might complain if we send 'custom' or empty string if it expects UUID.
+                // Let's send null (as any or specific override).
+                (dataToSubmit as any).project_id = null;
+            }
+
+            await api.addWorkLog(dataToSubmit);
+            // Reset form
             setFormData(prev => ({ ...prev, task: '', hours: 0, project_id: '' }));
+            (window as any).customProjectName = ''; // Reset temp global
             onSuccess();
         } catch (error) {
             console.error(error);
@@ -70,6 +122,12 @@ const WorkLogForm = ({ onSuccess }: WorkLogFormProps) => {
                 Log Daily Work
             </h3>
 
+            {currentEmployee && (
+                <div className="mb-4 text-xs text-slate-400">
+                    Logging as: <span className="text-cyan-400 font-medium">{currentEmployee.name}</span>
+                </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -87,18 +145,43 @@ const WorkLogForm = ({ onSuccess }: WorkLogFormProps) => {
                         <div className="relative">
                             <select
                                 required
-                                value={formData.project_id}
-                                onChange={e => setFormData({ ...formData, project_id: e.target.value })}
+                                value={formData.project_id === 'custom' ? 'custom' : formData.project_id}
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    if (val === 'custom') {
+                                        setFormData(prev => ({ ...prev, project_id: 'custom' }));
+                                    } else {
+                                        setFormData(prev => ({ ...prev, project_id: val }));
+                                    }
+                                }}
                                 className="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 text-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none appearance-none transition-all"
                             >
                                 <option value="" className="bg-slate-800 text-slate-400">Select Project...</option>
                                 {projects.map(p => (
                                     <option key={p.id} value={p.id} className="bg-slate-800 text-slate-200">{p.project_name}</option>
                                 ))}
+                                <option value="custom" className="bg-slate-800 text-cyan-400 font-bold border-t border-slate-700">+ Write your own...</option>
                             </select>
                         </div>
                     </div>
                 </div>
+
+                {formData.project_id === 'custom' && (
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <label className="block text-sm font-medium text-cyan-400">Custom Project Name</label>
+                        <input
+                            type="text"
+                            required
+                            placeholder="Enter project name..."
+                            className="w-full px-4 py-2 bg-slate-800/80 border border-cyan-500/50 text-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-all"
+                            onChange={(e) => {
+                                // Store custom project name in a temp property or handle in submit
+                                // For now, we will handle in submit by prepending to task
+                                (window as any).customProjectName = e.target.value;
+                            }}
+                        />
+                    </div>
+                )}
 
                 <div className="space-y-2">
                     <label className="block text-sm font-medium text-slate-400">Task Description</label>
